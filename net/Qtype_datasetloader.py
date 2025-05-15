@@ -11,7 +11,7 @@ class Dataset_Qtype(Dataset):
                 group = f[group_name]
                 n_qubit = group['n_qubit'][()]
                 bits = group['bits'][:]
-                bits = (bits == 1).astype(int)  # 把-1映射到0，1映射到1
+                bits = (bits == 1).astype(int)  # map -1,1 to 0,1
                 recipes = group['recipes'][:]
                 renyi_Entropy_3q = group['renyi_Entropy_3q'][:]
                 if physic_condition == True:
