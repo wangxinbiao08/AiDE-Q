@@ -1,5 +1,5 @@
 from net.Qtype_train_val import Qtype_train
-from net.Qtype_dataengine_wxb import Qtype_dataengine
+from net.Qtype_dataengine import Qtype_dataengine
 from utils.utils import split_datasets, clear_folder, mend_datasets, reallocate_datasets
 import os
 import h5py
@@ -27,7 +27,7 @@ subset_num, subset_precentage, select_percentage = 5, 0.25, 0.1
 
 physic_condition = True
 
-for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   # 设置对应不同随机初始化种子的迭代并存在不同文件夹中
+for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   
     
     # clear_folder('temp')
     folder_path = f'folder_{folder_num}'
@@ -70,7 +70,7 @@ for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   # 设置对应
             if os.path.exists(logs_save_path):
                 os.remove(logs_save_path)
 
-            # 预训练阶段
+            # pre-train
             PRE_mse, PRE_R2 = Qtype_train([train_dataset_path], pretrain_model_save_path, logs_save_path,
                                           max_epoch, learning_rate, batch_size, start_early_stop_epoch_pt,
                                           device, val_dataset_path,
@@ -100,11 +100,11 @@ for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   # 设置对应
                         if num_records_selected < int(all_train_records_num*dataengine_rate*0.125):
                             break
 
-                # dataengine 数据筛选阶段
+                # dataengine for data selection
                 data_engine_model_save_path = f'model_val/{folder_path}/{prefix}_DE_model_{i}.pt'
                 repeat_time = int(max_shots/dataengine_shots)
                 
-                # 评测模型设置
+                # model evaluation setting
                 if i == 0:
                     retrain_dataset_path_list = [train_dataset_path, evaluation_dataset_path]
                     used_model_path = pretrain_model_save_path
@@ -148,9 +148,9 @@ for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   # 设置对应
                     file.write(f'selected data size: {select_num}, evaluation data size: {evaluation_num}, remain data size:{remain_num}\n')
                 # -------------------------------------------------------------------
 
-                # dataengine 重训练阶段
+                # dataengine retrain
                 print(f'Round DataEngine: {i}\n')
-                # 数据设置
+                # data setting
                 if i == 0:
                     retrain_dataset_path_list = [train_dataset_path, evaluation_dataset_path]
                 else:
@@ -168,7 +168,7 @@ for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   # 设置对应
                                             num_layers=2,
                                             dim_feedforward=128)
                 
-                # 防止模型性能回退
+                # avoid model performance decreasing
                 count_back = 0
                 while DE_R2 < last_R2:
                     if os.path.exists(evaluation_dataset_path):
@@ -182,7 +182,7 @@ for folder_num in ['1', '2', '3', '4', '5']: # ['1', '2', '3']:   # 设置对应
                         file.write(f'last R2:{last_R2}, new R2: {DE_R2}, model backward\n')
                     print(f'last R2:{last_R2}, new R2: {DE_R2}, model backward\n')
                     print(f'Round DataEngine Backward: {i}-{count_back}\n')
-                    reallocate_datasets(evaluation_dataset_path) # 加入, remaining_dataset_path，则把删除的数据放入remain中
+                    reallocate_datasets(evaluation_dataset_path) 
                     
                     if i == 0:
                         retrain_dataset_path_list = [train_dataset_path, evaluation_dataset_path]
