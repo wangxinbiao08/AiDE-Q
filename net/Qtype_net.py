@@ -36,27 +36,27 @@ class EmbeddingLayer(nn.Module):
         self.linear = nn.Linear(input_dim, emb_dim)
 
     def forward(self, x):
-        # x 的 shape 为 (batch_size, seq_len, input_dim) => (32, 256, 50)
-        x = self.linear(x)  # 将每个 50 维度映射到 128 维
+        # map the shape of x (batch_size, seq_len, input_dim) => (32, 256, 50)
+        x = self.linear(x)  # map dim-nqubits to 128-d
         return x
 
 
 class PositionEmbedding(nn.Module):
     def __init__(self, emb_dim, max_len):
         super(PositionEmbedding, self).__init__()
-        # 仅创建位置嵌入
+        # creating position embedding
         self.position_embedding = self.create_position_embedding(max_len, emb_dim)
         self.param_J_projection = nn.Linear(2, emb_dim)
 
     @staticmethod
     def create_position_embedding(max_len, emb_dim):
-        # 生成位置编码
+        # generate position encoding
         position_encoding = torch.zeros(max_len, emb_dim)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(torch.arange(0, emb_dim, 2).float() * (-math.log(10000.0) / emb_dim))
         position_encoding[:, 0::2] = torch.sin(position * div_term)
         position_encoding[:, 1::2] = torch.cos(position * div_term)
-        position_encoding = position_encoding.unsqueeze(0)  # 添加批量维度
+        position_encoding = position_encoding.unsqueeze(0)  # add batch dimension
         return nn.Parameter(position_encoding, requires_grad=False)
 
     def forward(self, x, param_J):
@@ -85,14 +85,14 @@ class Transformer_layer(nn.Module):
 class LinearProjection(nn.Module):
     def __init__(self, emb_dim, seq_len, output_dim):
         super(LinearProjection, self).__init__()
-        # 将 (seq_len * emb_dim) 映射到 output_dim
+        # map (seq_len * emb_dim) to output_dim
         self.linear = nn.Linear(seq_len * emb_dim, output_dim)
 
     def forward(self, x):
         batch_size, seq_len, emb_dim = x.shape
-        # 将输入形状 (batch_size, seq_len, emb_dim) 展平为 (batch_size, seq_len * emb_dim)
+        # flat the data shape (batch_size, seq_len, emb_dim) to (batch_size, seq_len * emb_dim)
         x = x.reshape(batch_size, -1)
-        x = self.linear(x)  # 映射到 [batch_size, output_dim]
+        x = self.linear(x)  # mapping to [batch_size, output_dim]
         return x
 
 
@@ -110,27 +110,27 @@ class Qtype(nn.Module):
 #        param_J = param_J.unsqueeze(1)
         x = self.position_embedding_layer(x, param_J)
 
-        # 在 train 模式下添加噪声
-        if self.training:  # 判断当前是否是训练模式
-            noise = torch.randn_like(x) * 0.05  # 生成与输入相同大小的高斯噪声
-            x = x + noise  # 将噪声加到输入数据中
+        # add noise at the training stage在 train 
+        if self.training:  # check if the training stage
+            noise = torch.randn_like(x) * 0.05  # generate Gaussian noise 
+            x = x + noise  # add the noise to data 
 
         x = self.LSTM_layer(x)
         x = self.Transformer_layer(x)
         x = self.LinearProjection_layer(x)
 
-        lstm_weight_ih = self.LSTM_layer.lstm.weight_ih_l0  # 输入到隐层的权重矩阵
+        lstm_weight_ih = self.LSTM_layer.lstm.weight_ih_l0  # weight matrix from input to implicit layers 
         orthogonal_loss_lstm = orthogonal_loss(lstm_weight_ih)
-        lstm_weight_hh = self.LSTM_layer.lstm.weight_hh_l0  # 隐层到隐层的权重矩阵
+        lstm_weight_hh = self.LSTM_layer.lstm.weight_hh_l0  # weight matrix from implicit layers  to implicit layers
         orthogonal_loss_lstm_hh = orthogonal_loss(lstm_weight_hh)
 
-        # 计算 transformer 权重的正交化损失
+        # calculate the orthogonal loss of transformer layer weight
         transformer_weights = self.Transformer_layer.transformer_encoder.layers[
-            0].self_attn.in_proj_weight  # self-attention 中的权重矩阵
+            0].self_attn.in_proj_weight  # weight matrix at self-attention 
         query_weight, key_weight, value_weight = torch.split(transformer_weights, transformer_weights.size(0) // 3, dim=0)
         orthogonal_loss_transformer = orthogonal_loss(query_weight) + orthogonal_loss(key_weight) + orthogonal_loss(value_weight)
 
-        # 计算 linear 权重的正交化损失
+        # calculate the orthogonal loss of linear layer weight
         linear_weights = self.LinearProjection_layer.linear.weight
         orthogonal_loss_linear = orthogonal_loss(linear_weights)
 
