@@ -31,13 +31,13 @@ def Qtype_val(dataset_path_list,
     differences = np.concatenate(differences)
     bins = 50
     hist, bin_edges = np.histogram(differences, bins=bins)
-    # 计算每个区间的中心点（即每个区间的中值，用来作为横坐标）
+    
     bin_centers = 0.5 * (bin_edges[1:] + bin_edges[:-1])
 
     plt.figure(figsize=(8, 6))
     plt.bar(bin_centers, hist, width=(bin_edges[1] - bin_edges[0]), color='blue', alpha=0.7)
 
-    # 添加图形标签和标题
+  
     plt.xlabel('Difference between output and target', fontsize=12)
     plt.ylabel('Frequency', fontsize=12)
     plt.title('Distribution of Differences between Output and Target', fontsize=14)
