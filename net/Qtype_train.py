@@ -7,11 +7,11 @@ from net.Qtype_datasetloader import Dataset_Qtype, DatasetLoader_Qtype
 import os
 
 def R2_score(preds, labels):
-    # 计算均方误差
+    # calculate mean square loss
     ss_res = np.sum((labels - preds) ** 2)  # Residual sum of squares
     ss_tot = np.sum((labels - np.mean(labels)) ** 2)  # Total sum of squares
 
-    # 计算R^2
+    # calculate R^2
     r2 = 1 - (ss_res / ss_tot)
     return r2
 
@@ -34,11 +34,11 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
     val_mse_history = []
     R2_history = []
 
-    patience = int(15)  # 最大容忍验证集指标未改进的 epoch 数
-    best_val_mse = float('inf')  # 保存最佳验证集 mse
-    best_epoch = 0  # 保存最佳 epoch
-    no_improvement_count = 0  # 未改进次数计数
-    start_early_stop_epoch = start_early_stop_epoch  # 设置早停开始的最小 epoch 数
+    patience = int(15)  
+    best_val_mse = float('inf')  
+    best_epoch = 0 
+    no_improvement_count = 0  
+    start_early_stop_epoch = start_early_stop_epoch  
 
     top_val_mse = []
     for epoch in range(num_epochs):
@@ -60,9 +60,9 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
             train_mse += mse_loss.item()
             train_records += 1
             loss = mse_loss + orthogonal_loss * 0.025
-            optimizer.zero_grad() # 清空梯度
-            loss.backward()   # 反向传播计算梯度
-            optimizer.step()   # 更新参数
+            optimizer.zero_grad() # clear gradient info
+            loss.backward()   # calculate backward gradient 
+            optimizer.step()   # update parameter
         avg_train_mse = train_mse / train_records
         train_mse_history.append(avg_train_mse)
         model_parameters_history.append(Net.state_dict())
@@ -86,7 +86,7 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
                     val_mse += mse_loss.item()
                     val_records += 1
 
-                    preds.append(output.detach().view(-1).cpu().numpy())  # 展平并转为 NumPy 数组
+                    preds.append(output.detach().view(-1).cpu().numpy())  
                     labels.append(renyi_Entropy_3q.view(-1).cpu().numpy())
 
             preds = np.concatenate(preds)
@@ -98,15 +98,15 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
             R2_history.append(R2)
             if len(top_val_mse) < 5:
                 top_val_mse.append((avg_val_mse, epoch, Net.state_dict()))
-                top_val_mse.sort(key=lambda x: x[0])  # 按照 mse 排序
+                top_val_mse.sort(key=lambda x: x[0])  # sort accoding to mse 
             elif avg_val_mse < top_val_mse[-1][0]:
                 top_val_mse[-1] = (avg_val_mse, epoch, Net.state_dict())
-                top_val_mse.sort(key=lambda x: x[0])  # 重新排序
+                top_val_mse.sort(key=lambda x: x[0]) 
 
-            if avg_val_mse < best_val_mse - 1e-4:  # 1e-4 是 delta
+            if avg_val_mse < best_val_mse - 1e-4:  # 1e-4 -> delta
                 best_val_mse = avg_val_mse
                 best_epoch = epoch
-                no_improvement_count = 0  # 重置计数
+                no_improvement_count = 0 
                 print(f'epoch:{epoch+1},  train_mse:{avg_train_mse}, val_mse:{avg_val_mse}, R2:{R2}, best model update')
                 with open(logs_save_path, 'a') as file:
                     file.write(f'epoch:{epoch+1},  train_mse:{avg_train_mse}, val_mse:{avg_val_mse}, R2:{R2}, best model update\n')
@@ -116,7 +116,7 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
                 with open(logs_save_path, 'a') as file:
                     file.write(f'epoch:{epoch+1},  train_mse:{avg_train_mse}, val_mse:{avg_val_mse}, R2:{R2}, no improvement\n')
 
-            # 检查早停条件
+            # check early-stop condition 
             if epoch >= start_early_stop_epoch and no_improvement_count >= patience:
                 logs = f'Early stopping at epoch {epoch + 1}. Best train_mse: {train_mse_history[best_epoch]:.6f}, val_mse: {val_mse_history[best_epoch]:.6f}, R2:{R2_history[best_epoch]}, at epoch {best_epoch + 1}.'
                 print(logs)
@@ -130,13 +130,11 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
     top_val_mse_values = [mse[0] for mse in top_val_mse]
     top_val_mse_sorted = sorted(top_val_mse_values)
     top_val_mse_avg = top_val_mse_sorted[0]
-    # top_3_val_mse = top_val_mse_sorted[2:]  # 去掉最小的两个
-    # top_val_mse_avg = np.mean(top_3_val_mse)
+    
 
     R2_history_sorted = sorted(R2_history, reverse=True)
     top_R2_avg = R2_history_sorted[0]
-    # top_3_to_5 = R2_history_sorted[2:5]
-    # top_R2_avg = sum(top_3_to_5) / len(top_3_to_5)
+    
 
     print(f'Top 3 val_mse average: {top_val_mse_avg:.6f}, R2 average:{top_R2_avg:.6f}')
     logs = f'\nTop 3 val_mse average: {top_val_mse_avg:.6f}, R2 average:{top_R2_avg:.6f}\n'
@@ -145,8 +143,8 @@ def Qtype_train(dataset_path_list, model_save_path, logs_save_path,
     if os.path.exists(model_save_path):
         os.remove(model_save_path)
         
-    # 保存最佳模型
-    torch.save(top_val_mse[0][2], model_save_path)  # 保存第一个（最优）的模型
+    # save the best model
+    torch.save(top_val_mse[0][2], model_save_path)  
     with open(logs_save_path, 'a') as file:
         file.write(logs)
     return top_val_mse_avg, top_R2_avg
