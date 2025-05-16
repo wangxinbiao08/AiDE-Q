@@ -7,7 +7,7 @@ import math
 
 def orthogonal_loss(weight_matrix):
     """
-    计算正交化损失: 目标是让权重矩阵接近单位矩阵。
+    Calculate the orthogonal loss: making the weight matrix close to unitary 
     """
     identity_matrix = torch.eye(weight_matrix.size(0)).to(weight_matrix.device)
 
@@ -32,7 +32,7 @@ class LSTM_Layer(nn.Module):
 class EmbeddingLayer(nn.Module):
     def __init__(self, input_dim, emb_dim):
         super(EmbeddingLayer, self).__init__()
-        # 定义线性映射层，将 50 维映射到 128 维
+        # Define linear mapping layer, map qubit-dim  -> 128
         self.linear = nn.Linear(input_dim, emb_dim)
 
     def forward(self, x):
