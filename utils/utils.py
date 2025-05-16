@@ -26,24 +26,24 @@ def split_datasets(dataset_paths,
                    train_records_num, val_records_num, dataengine_records_num, p_noise, shots, small_shots=None):
     records = []
 
-    # 读取所有记录
+    # read all records
     entropy = []
     with h5py.File(dataset_paths, 'r') as file:
         for group in file.values():
             record = {}
             for name, data in group.items():
-                # 检查数据是否是标量
+                # check if the data is a scalar 
                 if data.shape == ():
-                    record[name] = data[()]  # 对标量数据直接访问
+                    record[name] = data[()] 
                 else:
-                    record[name] = data[:]  # 对非标量数据使用切片
+                    record[name] = data[:]  
                 if name == 'renyi_Entropy_3q':
                     entropy.append(data[:])
             records.append(record)
     entropy = np.array(entropy)
     mean_entropy = np.mean(entropy, axis=0)
 
-    # 随机挑选记录以创建训练数据集
+    # randomly selecting records to construct hybrid datasets
     np.random.shuffle(records)
     total_records_num = train_records_num + val_records_num + dataengine_records_num
     train_records = records[:train_records_num]
@@ -52,7 +52,7 @@ def split_datasets(dataset_paths,
     print(f't_num: {train_records_num}, val_num: {val_records_num}, records_num: {len(records)}')
     print(f"total: {total_records_num}, train: {len(train_records)}, val: {len(val_records)}, de: {len(dataengine_records)}")
 
-    # 保存训练数据集
+    # save training dataset 
     noise_data_idx_ls = np.random.choice(train_records_num, size=int(train_records_num*p_noise), replace=False)  # noise set 0 for DE_engine
     
     with h5py.File(train_dataset_save_path, 'w') as train_file:
@@ -75,7 +75,7 @@ def split_datasets(dataset_paths,
                         data = expand_data_2D(data, shots)
                 group.create_dataset(key, data=data)
 
-    # 保存剩余数据集
+    # Save the validation dataset
     with h5py.File(val_dataset_save_path, 'w') as val_file:
         for idx, record in enumerate(val_records):
             group = val_file.create_group(f'record_{idx}')
@@ -85,7 +85,7 @@ def split_datasets(dataset_paths,
                 group.create_dataset(key, data=data)
 
 
-    # 保存剩余数据集
+    # Save the remaining dataset
     with h5py.File(dataengine_dataset_save_path, 'w') as engine_file:
         for idx, record in enumerate(dataengine_records):
             group = engine_file.create_group(f'record_{idx}')
@@ -97,27 +97,26 @@ def split_datasets(dataset_paths,
 def mend_datasets(dataset_paths, save_path):
     records = []
 
-    # 读取所有记录
+    # read all records
     for path in dataset_paths:
         with h5py.File(path, 'r') as file:
             for group in file.values():
                 record = {}
                 for name, data in group.items():
-                    # 检查数据是否是标量
+                    # check if data is scalar
                     if data.shape == ():
-                        record[name] = data[()]  # 对标量数据直接访问
+                        record[name] = data[()]  
                     else:
-                        record[name] = data[:]  # 对非标量数据使用切片
+                        record[name] = data[:]  
                 records.append(record)
 
-    # 随机挑选记录以创建训练数据集
-    np.random.shuffle(records)
 
-    # 如果目标文件已经存在，先删除
+    np.random.shuffle(records)
+    
     if os.path.exists(save_path):
         os.remove(save_path)
 
-    # 保存训练数据集
+    # Save the training dataset
     with h5py.File(save_path, 'w') as train_file:
         for idx, record in enumerate(records):
             group = train_file.create_group(f'record_{idx}')
@@ -128,44 +127,42 @@ def mend_datasets(dataset_paths, save_path):
 def reallocate_datasets(evaluation_dataset_path, remaining_dataset_path=None):
     evaluation_records = []
     remaining_records = []
-    # 读取所有记录
+    # read all records
     with h5py.File(evaluation_dataset_path, 'r') as file:
         evaluation_dataset_num = len(file.keys())
         for j, group in enumerate(file.values()):
             record = {}
             for name, data in group.items():
-                # 检查数据是否是标量
+                # check if data is scalar
                 if data.shape == ():
-                    record[name] = data[()]  # 对标量数据直接访问
+                    record[name] = data[()]  
                 else:
-                    record[name] = data[:]  # 对非标量数据使用切片
+                    record[name] = data[:]  
             if j <= evaluation_dataset_num // 2:  
-                evaluation_records.append(record) # evaluation_data只保留confidence前50%的数据
+                evaluation_records.append(record) # reserve top 50% of evaluation_data
             else:  
-                remaining_records.append(record)  # confidence后50%的数据重新放入evaluation_dataset
+                remaining_records.append(record)  
                 
-    # 如果目标文件已经存在，先删除
     if os.path.exists(evaluation_dataset_path):
         os.remove(evaluation_dataset_path)
         
-    # 保存训练数据集
+    # save training dataset
     with h5py.File(evaluation_dataset_path, 'w') as e_file:
         for idx, record in enumerate(evaluation_records):
             group = e_file.create_group(f'record_{idx}')
             for key, data in record.items():
                 group.create_dataset(key, data=data)
         
-    # 读取所有记录
+    # record all records
     if remaining_dataset_path is not None:
         with h5py.File(remaining_dataset_path, 'r') as file:
             for group in file.values():
                 record = {}
                 for name, data in group.items():
-                    # 检查数据是否是标量
                     if data.shape == ():
-                        record[name] = data[()]  # 对标量数据直接访问
+                        record[name] = data[()]  
                     else:
-                        record[name] = data[:]  # 对非标量数据使用切片
+                        record[name] = data[:]  
                 remaining_records.append(record)
             
         if os.path.exists(remaining_dataset_path):
@@ -179,17 +176,17 @@ def reallocate_datasets(evaluation_dataset_path, remaining_dataset_path=None):
 
 
 def expand_data(data, g):
-    # 获取输入data的第三个维度，data.shape: (batch, n_qubits, shots)
+    # get the third dim of data，data.shape: (batch, n_qubits, shots)
     h = data.size(2)
     
-    # 确保h < g
+    # ensure h < g
     if h > g:
         raise ValueError("the dimension of data should be less than g")
     
-    # 通过在最后一个维度上重复数据，扩展至 (d1, d2, g)
-    expanded_bits = data.repeat(1, 1, g // h + 1)  # 按照h的比例重复
+    # expand the data to dim (d1, d2, g) by repeating data on the last dim
+    expanded_bits = data.repeat(1, 1, g // h + 1)  
     
-    # 如果g不是h的整数倍，可能需要截断多余部分
+    # delete the redundant part if g//h != 0
     if expanded_bits.shape[2] > g:
         expanded_bits = expanded_bits[:, :, :g]
     
@@ -202,23 +199,16 @@ import shutil
 
 
 def clear_folder(folder_path):
-    """
-    清空指定文件夹中的所有文件和子文件夹
-    """
-    # 检查文件夹是否存在
     if os.path.exists(folder_path) and os.path.isdir(folder_path):
-        # 遍历文件夹中的所有文件和子文件夹
         for filename in os.listdir(folder_path):
             file_path = os.path.join(folder_path, filename)
 
             try:
-                # 如果是文件，直接删除
                 if os.path.isfile(file_path):
                     os.remove(file_path)
-                # 如果是文件夹，递归删除文件夹及其内容
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)
             except Exception as e:
-                print(f"删除 {file_path} 时出错: {e}")
+                print(f"error when deleting {file_path}: {e}")
     else:
-        print(f"文件夹 '{folder_path}' 不存在或不是一个有效的文件夹。")
+        print(f"filefolder '{folder_path}' not exist or not valid")
